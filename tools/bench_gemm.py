@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""GEMM 8192^3 por tipo, com TFLOPS por MHz de SM.
+"""8192^3 GEMM per data type, reported as TFLOPS per SM MHz.
 
-O número que decide é TFLOPS/MHz: ele não depende do limite de potência, que
-derruba o clock quando o tensor core passa a render mais por ciclo.
-Referência GA102 (relatos do gpu-unlock, issues #1 e #5):
-  BF16 e FP16 acumulando em FP32: ~0,043 TFLOPS/MHz travado, ~0,083 destravado
-  TF32: metade disso
-  FP16 acumulando em FP16: ~0,083 sempre (controle de taxa cheia)
+The number that matters is TFLOPS/MHz: it does not depend on the power limit, which pulls the clock down once the
+tensor cores do more work per cycle.
+GA102 reference (gpu-unlock reports, issues #1 and #5):
+  BF16 and FP16 with FP32 accumulation: ~0.043 TFLOPS/MHz locked, ~0.083 unlocked
+  TF32: half of that
+  FP16 with FP16 accumulation: ~0.083 always (full-rate control)
 
-Uso, uma GPU por vez, numa imagem com PyTorch e pynvml (nos testes, a do vLLM):
+Usage, one GPU at a time, in an image with PyTorch and pynvml (the vLLM image was used in the tests):
   docker run --rm --gpus '"device=0"' -v "$PWD":/bench:ro --entrypoint python3 \
     vllm/vllm-openai:nightly-8a728663c1c3eeace834a95f5654fa653cc1998c /bench/bench_gemm.py
-Soak (BF16 contínuo, uma linha JSON a cada ~10 s): acrescente --soak 600.
+Soak (continuous BF16, one JSON line every ~10 s): add --soak 600.
 """
 import argparse
 import json
@@ -34,7 +34,7 @@ HANDLE = None
 if pynvml is not None:
     try:
         pynvml.nvmlInit()
-        # Dentro do container só a GPU escolhida é visível.
+        # Inside the container only the selected GPU is visible.
         HANDLE = pynvml.nvmlDeviceGetHandleByIndex(0)
     except Exception:
         HANDLE = None
@@ -43,11 +43,11 @@ N = 8192
 FLOP_PER_GEMM = 2 * N**3
 
 CASES = [
-    # nome, dtype, tf32, fp16_acc
+    # name, dtype, tf32, fp16_acc
     ("bf16_acc32", torch.bfloat16, False, False),
     ("fp16_acc32", torch.float16, False, False),
     ("tf32", torch.float32, True, False),
-    ("fp16_acc16_controle", torch.float16, False, True),
+    ("fp16_acc16_control", torch.float16, False, True),
 ]
 
 
@@ -56,7 +56,7 @@ def text(value):
 
 
 class Sampler(threading.Thread):
-    """Amostra clock de SM e potência a cada 50 ms enquanto a medição roda."""
+    """Samples SM clock and power every 50 ms while a measurement runs."""
 
     def __init__(self):
         super().__init__(daemon=True)
@@ -80,7 +80,7 @@ class Sampler(threading.Thread):
 
 
 def set_mode(tf32, fp16_acc):
-    """Devolve False quando o torch não sabe acumular FP16 em FP16."""
+    """Returns False when torch cannot accumulate FP16 in FP16."""
     torch.backends.cuda.matmul.allow_tf32 = tf32
     if hasattr(torch.backends.cuda.matmul, "allow_fp16_accumulation"):
         torch.backends.cuda.matmul.allow_fp16_accumulation = fp16_acc
@@ -118,7 +118,7 @@ def header():
         info["vbios"] = text(pynvml.nvmlDeviceGetVbiosVersion(HANDLE))
         info["power_limit_w"] = pynvml.nvmlDeviceGetEnforcedPowerLimit(HANDLE) / 1000
     else:
-        info["nvml"] = "indisponível: sem clock nem potência, só TFLOPS"
+        info["nvml"] = "unavailable: no clock or power readings, TFLOPS only"
     return info
 
 
@@ -127,14 +127,14 @@ def bench(reps, iters, warmup):
     per_mhz_by_case = {}
     for name, dtype, tf32, fp16_acc in CASES:
         if not set_mode(tf32, fp16_acc):
-            print(json.dumps({"case": name, "skipped": "torch sem allow_fp16_accumulation"}), flush=True)
+            print(json.dumps({"case": name, "skipped": "torch has no allow_fp16_accumulation"}), flush=True)
             continue
         a, b, c = operands(dtype)
         for _ in range(warmup):
             torch.matmul(a, b, out=c)
         torch.cuda.synchronize()
         runs = [timed(a, b, c, iters) for _ in range(reps)]
-        per_mhz = [tflops / mhz for tflops, mhz, _ in runs if mhz > 0]  # NaN falha o > 0
+        per_mhz = [tflops / mhz for tflops, mhz, _ in runs if mhz > 0]  # NaN fails the > 0 test
         row = {
             "case": name,
             "tflops_median": round(statistics.median([r[0] for r in runs]), 2),
@@ -151,11 +151,11 @@ def bench(reps, iters, warmup):
 
     bf16 = per_mhz_by_case.get("bf16_acc32")
     if bf16 is None:
-        verdict = "sem clock de SM: compare TFLOPS no mesmo limite de potência"
+        verdict = "no SM clock reading: compare TFLOPS at the same power limit"
     elif bf16 < 0.06:
-        verdict = "BF16 em meia taxa (travado)"
+        verdict = "BF16 at half rate (locked)"
     else:
-        verdict = "BF16 em taxa cheia (destravado)"
+        verdict = "BF16 at full rate (unlocked)"
     print(f"BF16 TFLOPS/MHz = {bf16} -> {verdict}", file=sys.stderr)
 
 
@@ -164,7 +164,7 @@ def soak(seconds):
     set_mode(False, False)
     a, b, c = operands(torch.bfloat16)
     tflops, _, _ = timed(a, b, c, 20)
-    iters = max(10, int(10 * tflops * 1e12 / FLOP_PER_GEMM))  # janelas de ~10 s
+    iters = max(10, int(10 * tflops * 1e12 / FLOP_PER_GEMM))  # ~10 s windows
     begin = time.monotonic()
     while time.monotonic() - begin < seconds:
         tflops, mhz, watts = timed(a, b, c, iters)
@@ -182,7 +182,7 @@ def main():
     parser.add_argument("--reps", type=int, default=5)
     parser.add_argument("--iters", type=int, default=100)
     parser.add_argument("--warmup", type=int, default=10)
-    parser.add_argument("--soak", type=int, default=0, help="segundos de carga BF16 contínua")
+    parser.add_argument("--soak", type=int, default=0, help="seconds of continuous BF16 load")
     args = parser.parse_args()
     if args.soak:
         soak(args.soak)

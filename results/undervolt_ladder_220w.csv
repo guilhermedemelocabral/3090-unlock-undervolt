@@ -1,4 +1,4 @@
-degrau,lock_mhz,gpu,modelo,offset_mhz,resultado,iteracoes_180s,mhz,watts_mediana,observacao
+step,lock_mhz,gpu,model,offset_mhz,result,iterations_180s,mhz,watts_median,note
 vf-L1700-o060,1700,0,RTX 3090 Ti,60,ok,43726,1695,174,
 vf-L1700-o060,1700,1,RTX 3090,60,ok,33438,1695,185,
 vf-L1700-o060,1700,2,RTX 3090,60,ok,33788,1695,172,
@@ -12,17 +12,17 @@ vf-L1700-o180,1700,1,RTX 3090,180,ok,37240,1695,185,
 vf-L1700-o180,1700,2,RTX 3090,180,ok,41119,1695,180,
 vf-L1700-o180,1700,3,RTX 3090,180,ok,34413,1695,177,
 vf-L1800-o060,1800,0,RTX 3090 Ti,60,ok,40491,1800,170,
-vf-L1800-o060,1800,1,RTX 3090,60,inválido,8487,1725,145,"a 3090 não passou de ~1725 MHz e o stress caiu para duty 0,05"
-vf-L1800-o060,1800,2,RTX 3090,60,inválido,8505,1695,130,"a 3090 não passou de ~1725 MHz e o stress caiu para duty 0,05"
-vf-L1800-o060,1800,3,RTX 3090,60,inválido,8477,1725,142,"a 3090 não passou de ~1725 MHz e o stress caiu para duty 0,05"
+vf-L1800-o060,1800,1,RTX 3090,60,invalid,8487,1725,145,the 3090 never went above ~1725 MHz and the stress loop fell to a 0.05 duty
+vf-L1800-o060,1800,2,RTX 3090,60,invalid,8505,1695,130,the 3090 never went above ~1725 MHz and the stress loop fell to a 0.05 duty
+vf-L1800-o060,1800,3,RTX 3090,60,invalid,8477,1725,142,the 3090 never went above ~1725 MHz and the stress loop fell to a 0.05 duty
 vf-L1800-o120,1800,0,RTX 3090 Ti,120,ok,41795,1800,175,
-vf-L1800-o120,1800,1,RTX 3090,120,inválido,8497,1725,143,"a 3090 não passou de ~1725 MHz e o stress caiu para duty 0,05"
-vf-L1800-o120,1800,2,RTX 3090,120,inválido,8517,1695,128,"a 3090 não passou de ~1725 MHz e o stress caiu para duty 0,05"
-vf-L1800-o120,1800,3,RTX 3090,120,inválido,8506,1725,138,"a 3090 não passou de ~1725 MHz e o stress caiu para duty 0,05"
+vf-L1800-o120,1800,1,RTX 3090,120,invalid,8497,1725,143,the 3090 never went above ~1725 MHz and the stress loop fell to a 0.05 duty
+vf-L1800-o120,1800,2,RTX 3090,120,invalid,8517,1695,128,the 3090 never went above ~1725 MHz and the stress loop fell to a 0.05 duty
+vf-L1800-o120,1800,3,RTX 3090,120,invalid,8506,1725,138,the 3090 never went above ~1725 MHz and the stress loop fell to a 0.05 duty
 vf-L1800-o180,1800,0,RTX 3090 Ti,180,ok,42135,1800,171,
-vf-L1800-o180,1800,1,RTX 3090,180,inválido,8503,1725,141,"a 3090 não passou de ~1725 MHz e o stress caiu para duty 0,05"
-vf-L1800-o180,1800,2,RTX 3090,180,inválido,8516,1695,126,"a 3090 não passou de ~1725 MHz e o stress caiu para duty 0,05"
-vf-L1800-o180,1800,3,RTX 3090,180,inválido,8735,1725,136,"a 3090 não passou de ~1725 MHz e o stress caiu para duty 0,05"
+vf-L1800-o180,1800,1,RTX 3090,180,invalid,8503,1725,141,the 3090 never went above ~1725 MHz and the stress loop fell to a 0.05 duty
+vf-L1800-o180,1800,2,RTX 3090,180,invalid,8516,1695,126,the 3090 never went above ~1725 MHz and the stress loop fell to a 0.05 duty
+vf-L1800-o180,1800,3,RTX 3090,180,invalid,8735,1725,136,the 3090 never went above ~1725 MHz and the stress loop fell to a 0.05 duty
 vf-o000,1600,0,RTX 3090 Ti,0,ok,48493,1590,185,
 vf-o000,1600,1,RTX 3090,0,ok,36383,1590,182,
 vf-o000,1600,2,RTX 3090,0,ok,42349,1590,182,
@@ -39,7 +39,7 @@ vf-o180,1600,0,RTX 3090 Ti,180,ok,51079,1590,188,
 vf-o180,1600,1,RTX 3090,180,ok,40277,1590,178,
 vf-o180,1600,2,RTX 3090,180,ok,48180,1590,179,
 vf-o180,1600,3,RTX 3090,180,ok,41350,1590,178,
-vf-o240-L1700,1700,1,RTX 3090,240,DIVERGIU (16 s),,,,divergência bit a bit sem Xid; offset zerado na hora
+vf-o240-L1700,1700,1,RTX 3090,240,MISMATCH (16 s),,,,bit-exact mismatch with no Xid; offset reset at once
 vf-o240,1600,0,RTX 3090 Ti,240,ok,49193,1590,186,
 vf-o240,1600,1,RTX 3090,240,ok,42784,1590,176,
 vf-o240,1600,2,RTX 3090,240,ok,50481,1590,179,

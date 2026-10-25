@@ -1,10 +1,10 @@
-"""stress_mem.py --seconds S [--gb G] — banda e integridade da GDDR6X para o degrau de offset de memória.
+"""stress_mem.py --seconds S [--gb G] — GDDR6X bandwidth and integrity, for the memory-offset steps.
 
-A cada iteração: gera no GPU um padrão determinístico novo (semente = número da iteração) em `src`, copia para `dst`
-(a banda vem desta cópia, medida com eventos CUDA: lê e escreve G/2 GB cada) e confere `dst` contra o padrão gerado de
-novo. Qualquer diferença é erro de memória (célula ou cópia). Erros de enlace a GDDR6X retransmite (EDR): não corrompem,
-mas derrubam a banda; por isso a banda por degrau importa tanto quanto a integridade.
-Uma linha JSON a cada ~5 s; sai com 3 na primeira divergência."""
+Each iteration generates a new deterministic pattern on the GPU (seed = iteration number) in `src`, copies it back and
+forth to `dst` (bandwidth comes only from these copies, timed with CUDA events) and checks `dst` against the pattern
+generated again. Any difference is a memory error (cell or copy). GDDR6X retransmits link errors (EDR): they do not
+corrupt data but they lower bandwidth, so bandwidth per step matters as much as integrity.
+One JSON line every ~5 s; exits with 3 on the first mismatch."""
 import argparse
 import json
 import statistics
@@ -44,7 +44,7 @@ def main():
     it, bad, bws, mem, ws = 0, 0, [], [], []
     while time.monotonic() - t0 < a.seconds:
         pattern(src, it)
-        for _ in range(COPIES // 2):   # vai e volta: a banda vem só das cópias, sem a geração do padrão (que pesa no PL)
+        for _ in range(COPIES // 2):   # back and forth: bandwidth comes only from the copies, not from the pattern generation (which loads the PL)
             ev0.record()
             dst.copy_(src)
             src.copy_(dst)
@@ -53,7 +53,7 @@ def main():
             bws.append(4 * src.numel() * 8 / (ev0.elapsed_time(ev1) / 1000) / 1e9)
             mem.append(pynvml.nvmlDeviceGetClockInfo(h, pynvml.NVML_CLOCK_MEM))
             ws.append(pynvml.nvmlDeviceGetPowerUsage(h) / 1000)
-        pattern(src, it)          # regenera: corrupção em qualquer cópia aparece na comparação com dst
+        pattern(src, it)          # regenerate: corruption in any copy shows up in the comparison with dst
         if not torch.equal(dst, src):
             bad += 1
             print(json.dumps({"t_s": round(time.monotonic() - t0, 1), "MISMATCH": bad, "iter": it,

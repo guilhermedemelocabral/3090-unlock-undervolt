@@ -1,9 +1,11 @@
-"""vf_offset.py get | set IDX=MHZ ... | mem IDX=MHZ ... | reset — offsets V/F de GPC e de memória por GPU (NVML documentado).
+"""vf_offset.py get | set IDX=MHZ ... | mem IDX=MHZ ... | reset — per-GPU V/F offsets for GPC and memory (documented NVML).
 
-Roda no host como root (sudo python3 -I vf_offset.py ...). Offset positivo desloca a curva inteira para cima:
-com o lock de clock (-lgc), a GPU chega ao mesmo clock com menos voltagem (undervolt). Não persiste entre boots.
-`mem` ajusta o offset de clock da memória (nvmlDeviceSetMemClkVfOffset); `reset` zera os dois.
-O NVML usa índice de enumeração; o mapa índice → UUID sai no `get`."""
+Run on the host as root (sudo python3 -I vf_offset.py ...). A positive GPC offset shifts the whole V/F curve up:
+together with a clock lock (-lgc) the GPU reaches the same clock at a lower voltage (undervolt). WITHOUT the lock the
+same offset is an overclock. Offsets do not survive a reboot or a driver reload.
+`mem` sets the memory clock offset (nvmlDeviceSetMemClkVfOffset). Its unit is 2x the MHz that nvidia-smi reports
+(+500 gave +250 MHz on a 3090). `reset` sets both to zero.
+NVML uses enumeration order; `get` prints the index -> UUID map."""
 import ctypes
 import sys
 
@@ -58,7 +60,7 @@ def main(argv):
         for kv in argv[1:]:
             i, mhz = (int(x) for x in kv.split("="))
             if mhz % 15:
-                raise SystemExit(f"GPU{i}: offset {mhz} não é múltiplo de 15 MHz (o driver arredonda para baixo)")
+                raise SystemExit(f"GPU{i}: offset {mhz} is not a multiple of 15 MHz (the driver rounds down)")
             check(nv.nvmlDeviceSetGpcClkVfOffset(handle(i), mhz), f"set {i}={mhz}")
     for i in range(n.value):
         print(f"GPU{i} {uuid(i)} offset={get(i)} MHz mem={get_mem(i)} MHz")

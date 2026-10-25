@@ -1,33 +1,33 @@
-gpu,modelo,estado,caso,tflops_mediana,sm_mhz_mediana,watts_mediana,tflops_por_mhz
+gpu,model,state,case,tflops_median,sm_mhz_median,watts_median,tflops_per_mhz
 0,RTX 3090 Ti,stock,bf16_acc32,38.76,901.1,219.6,0.0431
 0,RTX 3090 Ti,stock,fp16_acc32,36.45,852.5,219.7,0.0427
 0,RTX 3090 Ti,stock,tf32,25.56,1223.4,219.6,0.0208
-0,RTX 3090 Ti,stock,fp16_acc16_controle,51.21,623.2,219.5,0.0818
+0,RTX 3090 Ti,stock,fp16_acc16_control,51.21,623.2,219.5,0.0818
 1,RTX 3090,stock,bf16_acc32,44.66,1064.7,219.6,0.042
 1,RTX 3090,stock,fp16_acc32,41.53,992.3,219.8,0.0418
 1,RTX 3090,stock,tf32,28.95,1399.3,219.6,0.0207
-1,RTX 3090,stock,fp16_acc16_controle,59.37,739.9,219.8,0.0806
+1,RTX 3090,stock,fp16_acc16_control,59.37,739.9,219.8,0.0806
 2,RTX 3090,stock,bf16_acc32,49.86,1180.0,219.4,0.0421
 2,RTX 3090,stock,fp16_acc32,46.52,1110.0,219.6,0.0419
 2,RTX 3090,stock,tf32,29.88,1455.4,219.5,0.0206
-2,RTX 3090,stock,fp16_acc16_controle,65.59,823.2,219.6,0.0795
+2,RTX 3090,stock,fp16_acc16_control,65.59,823.2,219.6,0.0795
 3,RTX 3090,stock,bf16_acc32,44.0,1053.6,219.7,0.0417
 3,RTX 3090,stock,fp16_acc32,41.32,986.1,219.5,0.0419
 3,RTX 3090,stock,tf32,28.74,1383.3,219.5,0.0207
-3,RTX 3090,stock,fp16_acc16_controle,57.89,722.8,219.5,0.0801
+3,RTX 3090,stock,fp16_acc16_control,57.89,722.8,219.5,0.0801
 0,RTX 3090 Ti,unlock,bf16_acc32,46.21,549.7,219.4,0.0841
 0,RTX 3090 Ti,unlock,fp16_acc32,43.43,524.1,219.5,0.0823
 0,RTX 3090 Ti,unlock,tf32,27.44,709.6,219.4,0.0386
-0,RTX 3090 Ti,unlock,fp16_acc16_controle,51.6,616.7,219.4,0.0833
+0,RTX 3090 Ti,unlock,fp16_acc16_control,51.6,616.7,219.4,0.0833
 1,RTX 3090,unlock,bf16_acc32,55.0,676.9,219.5,0.0812
 1,RTX 3090,unlock,fp16_acc32,51.4,639.1,219.7,0.0804
 1,RTX 3090,unlock,tf32,32.15,786.5,219.7,0.0408
-1,RTX 3090,unlock,fp16_acc16_controle,59.11,742.9,219.6,0.0795
+1,RTX 3090,unlock,fp16_acc16_control,59.11,742.9,219.6,0.0795
 2,RTX 3090,unlock,bf16_acc32,62.8,773.3,219.6,0.0805
 2,RTX 3090,unlock,fp16_acc32,58.49,716.8,219.6,0.0817
 2,RTX 3090,unlock,tf32,36.48,895.3,219.8,0.0407
-2,RTX 3090,unlock,fp16_acc16_controle,66.76,836.5,219.7,0.0794
+2,RTX 3090,unlock,fp16_acc16_control,66.76,836.5,219.7,0.0794
 3,RTX 3090,unlock,bf16_acc32,55.08,678.3,219.3,0.0806
 3,RTX 3090,unlock,fp16_acc32,51.09,636.8,219.7,0.0799
 3,RTX 3090,unlock,tf32,32.26,781.3,219.7,0.0414
-3,RTX 3090,unlock,fp16_acc16_controle,59.03,727.9,219.6,0.0811
+3,RTX 3090,unlock,fp16_acc16_control,59.03,727.9,219.6,0.0811

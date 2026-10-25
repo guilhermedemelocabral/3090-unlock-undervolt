@@ -1,4 +1,4 @@
-gpu,modelo,janelas,tflops_mediana,tflops_por_mhz_mediana,mhz_mediana,watts_mediana
+gpu,model,windows,tflops_median,tflops_per_mhz_median,mhz_median,watts_median
 0,RTX 3090 Ti,63,45.3,0.0827,548,219.5
 1,RTX 3090,68,50.9,0.0807,631,219.7
 2,RTX 3090,72,55.9,0.0807,693,219.7

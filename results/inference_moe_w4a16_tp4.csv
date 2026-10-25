@@ -1,0 +1,10 @@
+metric,stock_1600_off0,unlock_1600_off0,unlock_1700_off120,unit,note
+cold prefill 84k (n=12),52.5,49.5,48.8,s,CV <= 0.2%
+cold prefill ~150k,98.1,91.8,93.5,s,
+TTFT 82k (probe),51.3,48.3,47.5,s,
+6 concurrent streams (aggregate),370,388,393,tok/s,
+decode prose,126.0,128.4,129.8,tok/s,1 stream
+decode code,186.1,188.4,191.7,tok/s,1 stream
+count100 (exact output),194.5,198.1,202.9,tok/s,exact in all three
+retrieval at 84k P(correct),0.944,0.958,0.940,,teacher forcing; ~0.015 run-to-run variation
+12-session stress correct,36/36,36/36,36/36,,

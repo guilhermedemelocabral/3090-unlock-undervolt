@@ -1,0 +1,5 @@
+load,gpu_w_median,gpu_w_peak_100ms,gpus_plus_cpu_max_w,dc_estimate_with_60w_rest,pct_of_1250w_psu,v12_min
+memory stress 4 GPUs at 220 W,214-229,234-265,1082,1142,91,11.90
+GEMM soak 4 GPUs at 220 W with unlock,220,221-225,,,,
+MoE inference TP4 1700/+120,167-198,180-210,885,945,76,11.90
+training on 1 GPU (3090 Ti 1950/+120 450 W),426,487,~620,~680,~54,12.00
