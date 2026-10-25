@@ -20,10 +20,10 @@ lock at 1700:     runs at 1700 MHz with V1 < V2            -> same clock, lower 
 The rules that follow from this:
 
 1. **Never apply the offset without the lock.** Without a cap, the card climbs to the top of the shifted curve and the offset becomes an **overclock** at maximum voltage. Always set the lock first, then the offset. If setting the lock fails, set the offset back to 0. `tools/apply_profile.sh` does exactly this.
-2. **Offsets come in 15 MHz steps.** The driver rounds down, so use multiples of 15: +60, +120, +180, +195 and so on.
+2. **Offsets come in 15 MHz bins.** Use multiples of 15: +60, +120, +180, +195 and so on.
 3. **Nothing persists.** A reboot or a driver reload resets both the lock and the offset, so they must be reapplied at boot (see step 8).
 4. **The memory offset uses different units.** `nvmlDeviceSetMemClkVfOffset` takes 2× the MHz that `nvidia-smi` reports: +500 gave +250 MHz on a 3090.
-5. **You cannot see the voltage.** `nvidia-smi` does not report core voltage on GeForce. The undervolt shows up only as power, temperature and stability.
+5. **You cannot see the voltage.** On these cards `nvidia-smi -q -d VOLTAGE` returns nothing. The undervolt shows up only as power, temperature, work per watt and stability.
 
 ### Which regime you are in decides whether it helps
 
@@ -32,7 +32,7 @@ The power limit (PL), the clock lock and the V/F curve interact. In practice the
 | regime | what happens | does the undervolt help? |
 |---|---|---|
 | **lock-limited:** the card sits at the lock with power below the PL (LLM decode, most serving here) | same clock at lower voltage | **less power and heat**, not more speed; a higher lock at the same voltage can buy speed |
-| **power-limited:** the card hits the PL and the clock drops (dense GEMM, heavy training) | the limiter picks a lower clock | yes, **while the clock is above the voltage floor**: lower voltage gives more clock per watt. Not at the floor: dense GEMM at 220 W ran at 550–700 MHz, already at minimum voltage, and the offset changed nothing there |
+| **power-limited:** the card hits the PL and the clock drops (dense GEMM, heavy training) | the limiter picks a lower clock | yes, **while the voltage is above the floor**: less voltage per clock means more work per watt. On the 3090s, +240 at 1600 MHz gave 18–22% more GEMM work at the same ~180 W. The 3090 Ti stopped gaining past +120 at 1600 MHz, probably because it was already at its minimum voltage |
 
 ## 2. Prerequisites
 
@@ -60,7 +60,7 @@ Also record the baseline of your **real** workload: tokens/s, s/step, TTFT. This
 - **Power limit:** your safety budget. Treat it as an **average, not a ceiling**: with four GPUs at 220 W under memory-heavy load, 100 ms peaks reached 234–265 W per GPU, and GPUs + CPU hit ~1080 W.
 - **Target lock:** where your workload lives.
   - For lock-limited serving, start at the clock you already run (here 1600 MHz) and later try one or two bins higher with the offset.
-  - The 3090s here never went above **~1725 MHz** even with a 1800 lock and power to spare, with no throttle reason in NVML. In multi-GPU tensor parallel, a lock above that buys nothing.
+  - The 3090s here never went above **~1725 MHz** even with a 1800 lock and power to spare (179 W, 64 °C), with every throttle reason in NVML at 0. Our guess is a voltage limit that NVML does not expose. In four-GPU tensor parallel, the slowest card sets the pace, so a lock above ~1725 buys nothing.
 
 ## 5. Climb the offset ladder with a bit-exact stress
 
@@ -77,7 +77,7 @@ What one rung does:
 
 1. Checks that every GPU is at the expected PL and that no process is using the GPUs.
 2. Applies the lock, then the offsets.
-3. Runs `tools/stress_vf.py` on every GPU. It holds the card **at the lock clock and close to the power limit**: a closed-loop duty cycle on a BF16 GEMM, the worst current the lock point sees in service. Every result is compared **bit for bit** with the first.
+3. Runs `tools/stress_vf.py` on every GPU. A closed-loop duty cycle on a BF16 GEMM holds the card **at the lock clock** with as much load as the power limit allows; at 1600 MHz that was ~180 W per GPU. This is the regime the serving workload lives in. Every result is compared **bit for bit** with the first.
 4. Watches for:
    - a new Xid in the kernel log;
    - temperature at or above 85 °C;
@@ -96,7 +96,7 @@ What we measured (220 W, four GPUs at once, 180 s per rung):
 | 1700 MHz | ok | ok | ok | **one 3090 mismatched** |
 | 1800 MHz | 3090 Ti ok up to +180; the 3090s capped at ~1725 MHz | | | |
 
-At the same clock and the same ~180 W, +240 let the 3090s do **18–22% more work** per second. The 3090 Ti stopped improving above +120 at 1600 MHz because it was already at its voltage floor.
+At 1600 MHz and the same ~180 W, +240 let the 3090s do **18–22% more work** per second. The 3090 Ti stopped improving above +120, probably because it was already at its voltage floor. The 1800 MHz rungs only count for the 3090 Ti: the 3090s never reached the lock, and the stress loop fell to a 5% duty cycle.
 
 ## 6. Leave a margin
 
@@ -110,11 +110,14 @@ Take the highest rung that passed on **every** GPU and back off by at least 60 M
 The stress validates a point **at the current it ran with**. Higher current means more voltage droop, which eats the margin. Here:
 
 - **Serving (four GPUs, 220 W):**
-  - a same-session ABA of 1700/+120 against 1600/0 on the inference engine gave **+2.6–3.8% decode**, ~1% faster prefill and up to ~8 W more per GPU;
-  - a full battery confirmed it: exact-output checks passed, the long-context retrieval score stayed within run-to-run variation, and there were no errors.
+  - **Same-session ABA:** 1600/0 → 1700/+120 → 1600/0 on one running inference server. 1700/+120 gave **+2.6–3.8% decode**, 1.1% lower TTFT at 82k and 1–8 W more per GPU at p99. The exact-output check matched in all three arms.
+  - **Full battery in a separate server session:** no errors, no Xid, and every exact-output and quality check passed.
+    - Speed against the unlocked 1600/0 run was mixed: most numbers within ±2%, but reasoning decode was −8.6% (MTP acceptance 0.667 → 0.630) and one concurrency phase was −9–10%. A second phase didn't reproduce the drop, so we read it as variance between server sessions.
+    - The long-context retrieval score went 0.958 → 0.940; the stock run gave 0.944.
+  - We promoted it **without** a same-session quality A/B or a 10-minute soak at 1700/+120. Silent errors are exactly the risk an undervolt adds, so a careful setup should run both.
 - **Training (one 3090 Ti, PL raised to 450 W):**
   - the card ran 1800/+120, 1900/+60, 1900/+120, 1950/+120, 1950/+180 and 1995/+180 cleanly at ~370–430 W;
-  - **2010 / +180 produced two anomalies in ~215 steps: one loss of 6×10³¹ with a normal grad_norm, and one infinite grad_norm.** A corrupted logit fits the first one: cross-entropy explodes, but the softmax gradient is bounded. There were no anomalies before or after;
+  - **2010 / +180 produced two anomalies in ~200 steps: one loss of 6×10³¹ with a normal grad_norm, and one infinite grad_norm.** A corrupted logit fits the first one: cross-entropy explodes, but the softmax gradient is bounded. There were no anomalies before or after;
   - +180 had passed the bit-exact stress at 1800 MHz with ~180 W; at 2010 MHz with ~425 W it did not hold;
   - we stepped back to **1950/+120**: same speed within noise, no anomalies over 178+ steps.
 
@@ -149,15 +152,18 @@ Also:
 
 | use | power limit | lock | offset | why |
 |---|---|---|---|---|
-| serving on 4 GPUs | 220 W each | 1700 MHz | +120 | lock-limited regime; +2.6–3.8% decode, PSU stays within budget |
+| serving on 4 GPUs | 220 W each | 1700 MHz | +120 | lock-limited regime; +2.6–3.8% decode in the same-session ABA, PSU at ~885 W peak for GPUs + CPU |
 | training on one 3090 Ti (others idle) | 450 W | 1950 MHz | +120 | **~2.3×** a 260 W no-unlock baseline in tokens/s; 2010/+180 caused silent errors |
 
 ## 10. Pitfalls we hit
 
-- **The memory overclock gained nothing.** Raising memory to the P0 clock or +5% gave **no bandwidth** under a power cap, only more power. Even a pure copy loop hits 220 W on a 3090, and memory-bound loads overshoot the PL on some boards (225–229 W average at a 220 W limit).
+- **The memory overclock gained nothing.** In CUDA these cards run memory in P2, 250 MHz below P0.
+  - Raising it to the P0 clock gave **no bandwidth** under the power cap (694–759 GB/s per GPU either way), only more power. In a pure copy loop on one 3090, bandwidth even fell from ~595 to 572 GB/s, because the copy alone already reached the 220 W limit.
+  - +5% above P0 pushed one board to 236 W within 10 s and was aborted.
+  - Under memory-heavy load the limit is soft: two 3090s averaged 225–229 W at 220 W.
 - **A stress loop can stop exercising the point.** If the duty-cycle controller lowers load whenever the clock is below the lock, a card that can't reach the lock spirals down to idle and the rung tests nothing. Lower load only when the clock dropped **because of power** (fixed in `stress_vf.py`).
 - **The HW Slowdown bit can lie.** It flickered "Active" on a 3090 Ti while the cumulative HW Thermal Slowdown and HW Power Braking counters stayed at 0 µs. Use the counters.
-- **Removing the lock costs speed when hot.** At 78–80 °C GPU Boost cuts bins, and the extra watts become heat. With a lock, the card held its clock cooler.
+- **Removing the lock didn't make training faster.** With +60 and a 450–480 W limit, the free-running 3090 Ti boosted to ~1950 MHz but sat on the power limiter at 440–454 W and 78–80 °C. It ran 13.5 s/step, slower than with a 1900 MHz lock (12.0–13.4 s/step) and hotter. Without a lock, the offset is also an overclock: the top of the curve moved from 2100 to 2160 MHz.
 
 ## 11. Alternatives
 
