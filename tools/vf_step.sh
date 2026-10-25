@@ -48,7 +48,7 @@ abort() { echo "[$(date -Is)] ABORT: $*"; kill_all; kill $LOGGER; zera; exit 5; 
 # Cumulative hardware braking time (HW Thermal Slowdown + HW Power Braking, µs) per GPU. Use the counter, not the
 # instantaneous hw_slowdown bit: on a 3090 Ti the bit showed "Active" while the counter stayed at 0 µs (spurious read).
 hw_us() { nvidia-smi -q -d PERFORMANCE | awk '/^GPU 0000/{i++} /(HW Thermal Slowdown|HW Power Braking) +: [0-9]+ us/{s[i-1]+=$(NF-1)} END{for(k=0;k<i;k++) print k, s[k]+0}'; }
-declare -A hw0 over zerada; while read -r k v; do hw0[$k]=$v; done < <(hw_us)
+declare -A hw0 over zeroed; while read -r k v; do hw0[$k]=$v; done < <(hw_us)
 t_end=$(( $(date +%s) + SECS + 150 ))
 sleep 8
 while docker ps --format '{{.Names}}' | grep -q '^vf-gpu'; do
@@ -61,8 +61,8 @@ while docker ps --format '{{.Names}}' | grep -q '^vf-gpu'; do
   while read -r k v; do [ $((v - ${hw0[$k]:-0})) -gt 500000 ] && abort "GPU$k had $(( (v - ${hw0[$k]:-0}) / 1000 )) ms of hardware braking"; done < <(hw_us)
   [ "$(xids)" -gt "$xid0" ] && abort "new Xid in the kernel log"
   for i in "${!UUIDS[@]}"; do
-    if [ -z "${zerada[$i]:-}" ] && grep -q MISMATCH "$R/$TAG-gpu$i.jsonl" 2>/dev/null; then
-      echo "[$(date -Is)] GPU$i bit-exact mismatch: its offset is back to 0"; sudo python3 -I "$D/vf_offset.py" set "$i=0" >/dev/null; zerada[$i]=1
+    if [ -z "${zeroed[$i]:-}" ] && grep -q MISMATCH "$R/$TAG-gpu$i.jsonl" 2>/dev/null; then
+      echo "[$(date -Is)] GPU$i bit-exact mismatch: its offset is back to 0"; sudo python3 -I "$D/vf_offset.py" set "$i=0" >/dev/null; zeroed[$i]=1
     fi
   done
   [ "$(date +%s)" -gt "$t_end" ] && abort "timed out"
