@@ -9,7 +9,7 @@ Measurements of three performance levers on **GA102 cards (RTX 3090 / 3090 Ti)**
 **TL;DR**
 - **Training on one GPU:** raising the power limit mattered far more than clocks or offsets. On a 3090 Ti the best measured point was a **1950 MHz lock + 120 MHz V/F offset (undervolt) + 450 W**, at **~2.3×** the throughput of an older run without the unlock at 260 W.
 - **Tensor unlock:** it doubles BF16 throughput per clock. At a 220 W cap the power limiter eats half of that, leaving +19–26% in dense GEMM and about −6% prefill time for a W4A16 MoE served with vLLM TP4. Decode stays flat.
-- **Undervolt:** it saves 15–20 W per GPU at the same clock. One step too far shows up as **silent compute errors**, with no crash and no Xid, so validate with bit-exact checks.
+- **Undervolt:** it saves 15–20 W per GPU at the same clock. One step too far shows up as **silent compute errors**, with no crash and no Xid, so validate with bit-exact checks. The step-by-step process is in [`docs/undervolt.md`](docs/undervolt.md).
 
 ## Results
 
@@ -111,6 +111,8 @@ The model is a MoE with ~6B active parameters (Qwen3.8-Flash-Next family, GPTQ W
 | Unlock | [Zagitta/gpu-unlock](https://github.com/Zagitta/gpu-unlock) at `af28cbb` + `dbe10a5` (Ubuntu initramfs loader), `gpu_unlock.resume=0` |
 
 ## Method
+
+> **Full undervolt guide:** [`docs/undervolt.md`](docs/undervolt.md) explains why lock + offset is an undervolt and offset alone is an overclock, which regimes benefit, the bit-exact ladder, margins, validating on the real workload, safe persistence, and the pitfalls we hit.
 
 - **Undervolt through the documented NVML API.** We call `nvmlDeviceSetGpcClkVfOffset` (offset in MHz, a multiple of 15) **after** `nvidia-smi -lgc 210,LOCK`. With the lock in place, the GPU runs at LOCK MHz with the voltage the stock curve uses at LOCK − offset. Without the lock, the same offset is an overclock.
 - **Memory offset units:** the memory offset API (`nvmlDeviceSetMemClkVfOffset`) takes **2×** the MHz that `nvidia-smi` shows: +500 gave +250 MHz.
