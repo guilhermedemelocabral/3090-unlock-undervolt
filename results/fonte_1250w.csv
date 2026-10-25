@@ -1,0 +1,5 @@
+carga,gpu_w_p50,gpu_w_pico_100ms,gpus_mais_cpu_max_w,estimativa_dc_com_resto_60w,pct_fonte_1250w,v12_min
+stress de memoria 4 GPUs a 220 W,214-229,234-265,1082,1142,91,11.90
+soak GEMM 4 GPUs a 220 W com unlock,220,221-225,,,,
+inferencia MoE TP4 1700/+120,167-198,180-210,885,945,76,11.90
+treino 1 GPU (3090 Ti 1950/+120 450 W),426,487,~620,~680,~54,12.00
