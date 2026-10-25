@@ -153,7 +153,7 @@ Also:
 | use | power limit | lock | offset | why |
 |---|---|---|---|---|
 | serving on 4 GPUs | 220 W each | 1700 MHz | +120 | lock-limited regime; +2.6–3.8% decode in the same-session ABA, PSU at ~885 W peak for GPUs + CPU |
-| training on one 3090 Ti (others idle) | 450 W | 1950 MHz | +120 | **~2.3×** a 260 W no-unlock baseline in tokens/s; 2010/+180 caused silent errors |
+| training on one 3090 Ti (others idle) | 450 W | 1950 MHz | +120 | **4.0×** faster per step than a 260 W no-unlock baseline (51.4 → 12.8 s/step; ~2.3× per token); 2010/+180 caused silent errors |
 
 ## 10. Pitfalls we hit
 

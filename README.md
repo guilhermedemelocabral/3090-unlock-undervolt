@@ -7,7 +7,7 @@ Measurements of three performance levers on **GA102 cards (RTX 3090 / 3090 Ti)**
 3. **Power limit (PL):** how much power each GPU may draw.
 
 **TL;DR**
-- **Training on one GPU:** raising the power limit mattered far more than clocks or offsets. On a 3090 Ti the best measured point was a **1950 MHz lock + 120 MHz V/F offset (undervolt) + 450 W**, at **~2.3×** the throughput of an older run without the unlock at 260 W.
+- **Training on one GPU:** raising the power limit mattered far more than clocks or offsets. On a 3090 Ti the best measured point was a **1950 MHz lock + 120 MHz V/F offset (undervolt) + 450 W**, **4.0× faster per step** than an older run without the unlock at 260 W (51.4 → 12.8 s/step).
 - **Tensor unlock:** it doubles BF16 throughput per clock. At a 220 W cap the power limiter eats half of that, leaving +19–26% in dense GEMM and about −6% prefill time for a W4A16 MoE served with vLLM TP4. Decode stays flat.
 - **Undervolt:** it saves 15–20 W per GPU at the same clock. One step too far shows up as **silent compute errors**, with no crash and no Xid, so validate with bit-exact checks. The step-by-step process is in [`docs/undervolt.md`](docs/undervolt.md).
 
@@ -17,31 +17,31 @@ Measurements of three performance levers on **GA102 cards (RTX 3090 / 3090 Ti)**
 
 The workload was QLoRA 4-bit fine-tuning (rank 8, sequences up to 16k) of a ~9B dense model, at ~20.1k tokens per step and an effective batch of 8. Speed is wall time between steps, excluding checkpoint pauses. Different settings fall on different sample windows, so expect ±5–10% noise.
 
-The **baseline is an older run on the same card, without the unlock**, at 260 W and a 1605 MHz lock (LoRA BF16, sequences up to 8k, ~35.1k tokens per step). Because tokens per step differ between the two runs, every speedup is computed from **tokens per second**.
+The **baseline is an older run on the same card, without the unlock**, at 260 W and a 1605 MHz lock (LoRA BF16, sequences up to 8k, ~35.1k tokens per step). Every speedup is computed from **seconds per step**, the number that sets how long a training run takes: speedup = 51.4 s ÷ s/step. The older run's steps carried more tokens (~35.1k vs ~20.1k), so per token the gain is smaller; the tokens/s column shows it (~2.3× at the sweet spot).
 
-| 3090 Ti setting (lock / V/F offset / PL) | s/step | tokens/s | **vs. baseline** | GPU power (median / peak) | temp. | loss anomalies | steps |
+| 3090 Ti setting (lock / V/F offset / PL) | s/step | tokens/s | **vs. baseline (s/step)** | GPU power (median / peak) | temp. | loss anomalies | steps |
 |---|---|---|---|---|---|---|---|
 | **baseline:** older run, 1605 MHz, 260 W, **no unlock** | 51.4 | ~683 | **1.00×** | — | — | — | 1,258 |
-| 1600 / +120 / 220 W, with unlock | 29.15 | ~689 | 1.01× | ~220 W | 58 °C | — | 62 |
-| 1800 / +120 / 450 W | 14.54 | ~1,380 | 2.02× | 369 / 425 W | 71 °C | — | 24 |
-| 1900 / +60 / 450 W | 11.97 | ~1,680 | 2.46× | 418 / 472 W | 75 °C | — | 35 |
-| no lock / +60 / 450–480 W | 13.48 | ~1,490 | 2.18× | 440–454 / 496 W | 78–80 °C | — | 33 |
-| 1900 / +120 / 450 W | 13.37 | ~1,500 | 2.20× | 402 / 475 W | 74 °C | — | 131 |
-| 1950 / +120 / 450 W | 12.57 | ~1,600 | 2.34× | 427 / 482 W | 75–77 °C | — | 60 |
-| 1950 / +180 / 450 W | 12.27 | ~1,640 | 2.40× | 408 / 485 W | 75 °C | — | 60 |
-| 1995 / +180 / 450 W | 11.93 | ~1,680 | 2.47× | ~414 W | 76 °C | — | 28 |
-| 2010 / +180 / 450 W (at the PL 29% of the time) | 12.47 | ~1,610 | 2.36× | mean 425 W | 78 °C | **2: loss 6×10³¹, grad_norm inf** | 60 |
-| **1950 / +120 / 450 W (sweet spot)** | **12.84** | **~1,560** | **2.29×** | 426 / 487 W | 73–76 °C | — | **178** |
+| 1600 / +120 / 220 W, with unlock | 29.15 | ~689 | 1.76× | ~220 W | 58 °C | — | 62 |
+| 1800 / +120 / 450 W | 14.54 | ~1,380 | 3.54× | 369 / 425 W | 71 °C | — | 24 |
+| 1900 / +60 / 450 W | 11.97 | ~1,680 | 4.29× | 418 / 472 W | 75 °C | — | 35 |
+| no lock / +60 / 450–480 W | 13.48 | ~1,490 | 3.81× | 440–454 / 496 W | 78–80 °C | — | 33 |
+| 1900 / +120 / 450 W | 13.37 | ~1,500 | 3.84× | 402 / 475 W | 74 °C | — | 131 |
+| 1950 / +120 / 450 W | 12.57 | ~1,600 | 4.09× | 427 / 482 W | 75–77 °C | — | 60 |
+| 1950 / +180 / 450 W | 12.27 | ~1,640 | 4.19× | 408 / 485 W | 75 °C | — | 60 |
+| 1995 / +180 / 450 W | 11.93 | ~1,680 | 4.31× | ~414 W | 76 °C | — | 28 |
+| 2010 / +180 / 450 W (at the PL 29% of the time) | 12.47 | ~1,610 | 4.12× | mean 425 W | 78 °C | **2: loss 6×10³¹, grad_norm inf** | 60 |
+| **1950 / +120 / 450 W (sweet spot)** | **12.84** | **~1,560** | **4.00×** | 426 / 487 W | 73–76 °C | — | **178** |
 
-- **The unlock alone matched the baseline.** With 40 W less and less than half the clock (220 W at ~720 MHz against 260 W and up to 1605 MHz), the unlocked card reached the same tokens/s.
+- **At 220 W, with the unlock, a step already took 29.2 s against 51.4 s (1.76×).** That was with 40 W less and less than half the clock (~720 MHz against up to 1605 MHz). Per token the two runs were even (~689 vs ~683 tokens/s), because the older run's steps were larger.
 - **Raising the power limit did the rest.** From 220 to 450 W the card ran ~2× faster. From 1900 to 2010 MHz everything lands in the same 12–13.4 s/step band, which is within the noise. The longest window, 178 steps at the sweet spot, is the most reliable number.
 - **The undervolt shows up in power.** At the same clock, +60 → +120 saved ~15 W and +120 → +180 saved ~19 W.
-- **2010 / +180 computed wrong without crashing.** There were two anomalous records in ~215 steps and none before or after:
+- **2010 / +180 computed wrong without crashing.** There were two anomalous records in ~200 steps and none before or after:
   - a loss of 6×10³¹ with a normal grad_norm, the signature of one corrupted logit (the softmax gradient is bounded);
   - an infinite grad_norm.
 
   An offset validated in the stress test at ~180 W does not hold at ~425 W: the higher current eats the voltage margin.
-- **No lock is worse.** At 78–80 °C GPU Boost cuts the clock, and the extra watts turn into heat.
+- **No lock is worse.** Free-running, the card boosted to ~1950 MHz but sat on the power limiter at 440–454 W and 78–80 °C, and it was slower than a 1900 MHz lock.
 - **Caveat on the baseline:** the method and data differ between the two runs, so the baseline comparison is approximate. Data: [`results/training_3090ti_speed.csv`](results/training_3090ti_speed.csv).
 
 ### Tensor unlock (GEMM, 220 W)
